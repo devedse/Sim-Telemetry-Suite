@@ -83,4 +83,6 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgements
 * Thanks to Image Space Incorporated and Studio397 for delivering us the next-gen racing simulation the world needs :)
+* Marcel Offermans' [Data Plugin](https://bitbucket.org/marrs/rfactor/src/e13b7d85bb48cb353af58f4223ecd41a47316f24/cpp/DataPlugin_v2/DataPlugin_v2/DataPlugin.cpp?at=master&fileviewer=file-view-default)
+
 * Inspired by LiveRacers.info
