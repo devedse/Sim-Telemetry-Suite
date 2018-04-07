@@ -54,7 +54,7 @@ void BridgePlugin::Startup(long version)
 		Log("could not create datagram socket");
 		return;
 	}
-	int err = fopen_s(&settings, "DataPlugin.ini", "r");
+	int err = fopen_s(&settings, "Bridge.rF2.ini", "r");
 	if (err == 0) {
 		Log("reading settings");
 		if (fscanf_s(settings, "%[^:]:%i", hostname, _countof(hostname), &port) != 2) {
@@ -73,7 +73,7 @@ void BridgePlugin::Startup(long version)
 		Log(portstring);
 	}
 	else {
-		Log("could not read settings, using defaults: localhost:6789");
+		Log("could not read settings, using defaults: localhost:666");
 		int errcode = getaddrinfo("localhost", NULL, &hints, &pResult);
 		port = 666;
 	}
