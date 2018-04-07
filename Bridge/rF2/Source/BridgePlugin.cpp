@@ -5,11 +5,13 @@
 #include <limits>
 #include <string>         // std::string
 // socket
-#include <ws2tcpip.h>
+#include <WS2tcpip.h>
 // thread
 #include <process.h>
 #pragma comment(lib, "Ws2_32.lib")
+#include <time.h>
 
+#define TIME_LENGTH 26
 
 // plugin information
 
@@ -34,119 +36,257 @@ void __cdecl DestroyPluginObject(PluginObject *obj) { delete((BridgePlugin *)obj
 
 void BridgePlugin::Startup(long version)
 {
-	// Open ports, read configs, whatever you need to do.  For now, I'll just clear out the
-	// example output data files.
+	FILE *settings;
+	data_version = 1;
+	char portstring[10];
 
-	serverPort = 666;
-	serverHost = "127.0.0.1";
+	ADDRINFO hints = { sizeof(addrinfo) };
+	hints.ai_flags = AI_ALL;
+	hints.ai_family = PF_INET;
+	hints.ai_protocol = IPPROTO_IPV4;
+	ADDRINFO *pResult = NULL;
 
-	senderSocket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (senderSocket < 0) {
+	Log("starting plugin");
+
+	// open socket
+	s = socket(PF_INET, SOCK_DGRAM, 0);
+	if (s < 0) {
+		Log("could not create datagram socket");
 		return;
 	}
+	int err = fopen_s(&settings, "DataPlugin.ini", "r");
+	if (err == 0) {
+		Log("reading settings");
+		if (fscanf_s(settings, "%[^:]:%i", hostname, _countof(hostname), &port) != 2) {
+			Log("could not read host and port");
+		}
 
-	sadSender.sin_family = AF_INET;
-	sadSender.sin_port = htons(serverPort);
-	sadSender.sin_addr.S_un.S_addr = inet_addr(serverHost);
+		Log("settings read from file");
+		int errcode = getaddrinfo(hostname, NULL, &hints, &pResult);
+
+		fclose(settings);
+
+		Log("hostname is:");
+		Log(hostname);
+		Log("port is:");
+		sprintf_s(portstring, "%i", port);
+		Log(portstring);
+	}
+	else {
+		Log("could not read settings, using defaults: localhost:6789");
+		int errcode = getaddrinfo("localhost", NULL, &hints, &pResult);
+		port = 666;
+	}
+
+	memset((char *)&sad, 0, sizeof(sad)); /* clear sockaddr structure */
+	sad.sin_family = AF_INET;           /* set family to Internet     */
+	sad.sin_port = htons((u_short)port);
+	sad.sin_addr.S_un.S_addr = *((ULONG*)&(((sockaddr_in*)pResult->ai_addr)->sin_addr));
 }
 
+void BridgePlugin::Shutdown()
+{
+	if (s > 0) {
+		closesocket(s);
+		s = 0;
+	}
+}
+
+void BridgePlugin::EnterRealtime()
+{
+	mET = 0.0f;
+}
+
+void BridgePlugin::ExitRealtime()
+{
+	mET = -1.0f;
+}
+
+void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
+{
+	StartStream();
+	StreamData((char *)&type_scoring, sizeof(char));
+
+	// session data (changes mostly with changing sessions)
+	StreamString((char *)&info.mTrackName, 64);
+	StreamData((char *)&info.mSession, sizeof(long));
+
+	// event data (changes continuously)
+	StreamData((char *)&info.mCurrentET, sizeof(double));
+	StreamData((char *)&info.mEndET, sizeof(double));
+	StreamData((char *)&info.mLapDist, sizeof(double));
+	StreamData((char *)&info.mNumVehicles, sizeof(long));
+
+	StreamData((char *)&info.mGamePhase, sizeof(byte));
+	StreamData((char *)&info.mYellowFlagState, sizeof(byte));
+	StreamData((char *)&info.mSectorFlag[0], sizeof(byte));
+	StreamData((char *)&info.mSectorFlag[1], sizeof(byte));
+	StreamData((char *)&info.mSectorFlag[2], sizeof(byte));
+	StreamData((char *)&info.mStartLight, sizeof(byte));
+	StreamData((char *)&info.mNumRedLights, sizeof(byte));
+
+	// scoring data (changes with new sector times)
+	for (long i = 0; i < info.mNumVehicles; i++) {
+		VehicleScoringInfoV01 &vinfo = info.mVehicle[i];
+		StreamData((char *)&vinfo.mPos.x, sizeof(double));
+		StreamData((char *)&vinfo.mPos.z, sizeof(double));
+		StreamData((char *)&vinfo.mPlace, sizeof(char));
+		StreamData((char *)&vinfo.mLapDist, sizeof(double));
+		StreamData((char *)&vinfo.mPathLateral, sizeof(double));
+		const double metersPerSec = sqrt((vinfo.mLocalVel.x * vinfo.mLocalVel.x) +
+			(vinfo.mLocalVel.y * vinfo.mLocalVel.y) +
+			(vinfo.mLocalVel.z * vinfo.mLocalVel.z));
+		StreamData((char *)&metersPerSec, sizeof(double));
+		StreamString((char *)&vinfo.mVehicleName, 64);
+		StreamString((char *)&vinfo.mDriverName, 32);
+		StreamString((char *)&vinfo.mVehicleClass, 32);
+		StreamData((char *)&vinfo.mTotalLaps, sizeof(short));
+		StreamData((char *)&vinfo.mBestSector1, sizeof(double));
+		StreamData((char *)&vinfo.mBestSector2, sizeof(double));
+		StreamData((char *)&vinfo.mBestLapTime, sizeof(double));
+		StreamData((char *)&vinfo.mLastSector1, sizeof(double));
+		StreamData((char *)&vinfo.mLastSector2, sizeof(double));
+		StreamData((char *)&vinfo.mLastLapTime, sizeof(double));
+		StreamData((char *)&vinfo.mCurSector1, sizeof(double));
+		StreamData((char *)&vinfo.mCurSector2, sizeof(double));
+		StreamData((char *)&vinfo.mTimeBehindLeader, sizeof(double));
+		StreamData((char *)&vinfo.mLapsBehindLeader, sizeof(long));
+		StreamData((char *)&vinfo.mTimeBehindNext, sizeof(double));
+		StreamData((char *)&vinfo.mLapsBehindNext, sizeof(long));
+		StreamData((char *)&vinfo.mNumPitstops, sizeof(short));
+		StreamData((char *)&vinfo.mNumPenalties, sizeof(short));
+		StreamData((char *)&vinfo.mInPits, sizeof(bool));
+		StreamData((char *)&vinfo.mSector, sizeof(char));
+		StreamData((char *)&vinfo.mFinishStatus, sizeof(char));
+	}
+	StreamVarString((char *)info.mResultsStream);
+	EndStream();
+}
 
 void BridgePlugin::UpdateTelemetry(const TelemInfoV01 &info)
 {
-	// Use the incoming data, for now I'll just write some of it to a file to a) make sure it
-	// is working, and b) explain the coordinate system a little bit (see header for more info)
-	FILE *fo = fopen("ExampleInternalsTelemetryOutput.txt", "a");
-	if (fo != NULL)
-	{
-		// Delta time is variable, as we send out the info once per frame
-		fprintf(fo, "DT=%.4f  ET=%.4f\n", info.mDeltaTime, info.mElapsedTime);
-		fprintf(fo, "Lap=%d StartET=%.3f\n", info.mLapNumber, info.mLapStartET);
-		fprintf(fo, "Vehicle=%s\n", info.mVehicleName);
-		fprintf(fo, "Track=%s\n", info.mTrackName);
-		fprintf(fo, "Pos=(%.3f,%.3f,%.3f)\n", info.mPos.x, info.mPos.y, info.mPos.z);
+	StartStream();
+	StreamData((char *)&type_telemetry, sizeof(char));
+	StreamData((char *)&info.mGear, sizeof(long));
+	StreamData((char *)&info.mEngineRPM, sizeof(double));
+	StreamData((char *)&info.mEngineMaxRPM, sizeof(double));
+	StreamData((char *)&info.mEngineWaterTemp, sizeof(double));
+	StreamData((char *)&info.mEngineOilTemp, sizeof(double));
+	StreamData((char *)&info.mClutchRPM, sizeof(double));
+	StreamData((char *)&info.mOverheating, sizeof(bool));
+	StreamData((char *)&info.mFuel, sizeof(double));
 
-		// Forward is roughly in the -z direction (although current pitch of car may cause some y-direction velocity)
-		fprintf(fo, "LocalVel=(%.2f,%.2f,%.2f)\n", info.mLocalVel.x, info.mLocalVel.y, info.mLocalVel.z);
-		fprintf(fo, "LocalAccel=(%.1f,%.1f,%.1f)\n", info.mLocalAccel.x, info.mLocalAccel.y, info.mLocalAccel.z);
+	StreamData((char *)&info.mPos.x, sizeof(double));
+	StreamData((char *)&info.mPos.y, sizeof(double));
+	StreamData((char *)&info.mPos.z, sizeof(double));
 
-		// Orientation matrix is left-handed
-		fprintf(fo, "[%6.3f,%6.3f,%6.3f]\n", info.mOri[0].x, info.mOri[0].y, info.mOri[0].z);
-		fprintf(fo, "[%6.3f,%6.3f,%6.3f]\n", info.mOri[1].x, info.mOri[1].y, info.mOri[1].z);
-		fprintf(fo, "[%6.3f,%6.3f,%6.3f]\n", info.mOri[2].x, info.mOri[2].y, info.mOri[2].z);
-		fprintf(fo, "LocalRot=(%.3f,%.3f,%.3f)\n", info.mLocalRot.x, info.mLocalRot.y, info.mLocalRot.z);
-		fprintf(fo, "LocalRotAccel=(%.2f,%.2f,%.2f)\n", info.mLocalRotAccel.x, info.mLocalRotAccel.y, info.mLocalRotAccel.z);
+	const double metersPerSec = sqrt((info.mLocalVel.x * info.mLocalVel.x) +
+		(info.mLocalVel.y * info.mLocalVel.y) +
+		(info.mLocalVel.z * info.mLocalVel.z));
+	StreamData((char *)&metersPerSec, sizeof(double));
 
-		// Vehicle status
-		fprintf(fo, "Gear=%d RPM=%.1f RevLimit=%.1f\n", info.mGear, info.mEngineRPM, info.mEngineMaxRPM);
-		fprintf(fo, "Water=%.1f Oil=%.1f\n", info.mEngineWaterTemp, info.mEngineOilTemp);
-		fprintf(fo, "ClutchRPM=%.1f\n", info.mClutchRPM);
+	StreamData((char *)&info.mLapStartET, sizeof(double));
+	StreamData((char *)&info.mLapNumber, sizeof(long));
 
-		// Driver input
-		fprintf(fo, "UnfilteredThrottle=%.1f%%\n", 100.0f * info.mUnfilteredThrottle);
-		fprintf(fo, "UnfilteredBrake=%.1f%%\n", 100.0f * info.mUnfilteredBrake);
-		fprintf(fo, "UnfilteredSteering=%.1f%%\n", 100.0f * info.mUnfilteredSteering);
-		fprintf(fo, "UnfilteredClutch=%.1f%%\n", 100.0f * info.mUnfilteredClutch);
+	StreamData((char *)&info.mUnfilteredThrottle, sizeof(double));
+	StreamData((char *)&info.mUnfilteredBrake, sizeof(double));
+	StreamData((char *)&info.mUnfilteredSteering, sizeof(double));
+	StreamData((char *)&info.mUnfilteredClutch, sizeof(double));
 
-		// Filtered input
-		fprintf(fo, "FilteredThrottle=%.1f%%\n", 100.0f * info.mFilteredThrottle);
-		fprintf(fo, "FilteredBrake=%.1f%%\n", 100.0f * info.mFilteredBrake);
-		fprintf(fo, "FilteredSteering=%.1f%%\n", 100.0f * info.mFilteredSteering);
-		fprintf(fo, "FilteredClutch=%.1f%%\n", 100.0f * info.mFilteredClutch);
+	StreamData((char *)&info.mLastImpactET, sizeof(double));
+	StreamData((char *)&info.mLastImpactMagnitude, sizeof(double));
+	StreamData((char *)&info.mLastImpactPos.x, sizeof(double));
+	StreamData((char *)&info.mLastImpactPos.y, sizeof(double));
+	StreamData((char *)&info.mLastImpactPos.z, sizeof(double));
+	for (long i = 0; i < 8; i++) {
+		StreamData((char *)&info.mDentSeverity[i], sizeof(byte));
+	}
 
-		// Misc
-		fprintf(fo, "SteeringShaftTorque=%.1f\n", info.mSteeringShaftTorque);
-		fprintf(fo, "Front3rdDeflection=%.3f Rear3rdDeflection=%.3f\n", info.mFront3rdDeflection, info.mRear3rdDeflection);
+	for (long i = 0; i < 4; i++) {
+		const TelemWheelV01 &wheel = info.mWheel[i];
+		StreamData((char *)&wheel.mDetached, sizeof(bool));
+		StreamData((char *)&wheel.mFlat, sizeof(bool));
+		StreamData((char *)&wheel.mBrakeTemp, sizeof(double));
+		StreamData((char *)&wheel.mPressure, sizeof(double));
+		StreamData((char *)&wheel.mRideHeight, sizeof(double));
+		StreamData((char *)&wheel.mTemperature[0], sizeof(double));
+		StreamData((char *)&wheel.mTemperature[1], sizeof(double));
+		StreamData((char *)&wheel.mTemperature[2], sizeof(double));
+		StreamData((char *)&wheel.mWear, sizeof(double));
+	}
+	EndStream();
+}
 
-		// Aerodynamics
-		fprintf(fo, "FrontWingHeight=%.3f FrontRideHeight=%.3f RearRideHeight=%.3f\n", info.mFrontWingHeight, info.mFrontRideHeight, info.mRearRideHeight);
-		fprintf(fo, "Drag=%.1f FrontDownforce=%.1f RearDownforce=%.1f\n", info.mDrag, info.mFrontDownforce, info.mRearDownforce);
+void BridgePlugin::StartStream() {
+	data_packet = 0;
+	data_sequence++;
+	data[0] = data_version;
+	data[1] = data_packet;
+	memcpy(&data[2], &data_sequence, sizeof(short));
+	data_offset = 4;
+}
 
-		// Other
-		fprintf(fo, "Fuel=%.1f ScheduledStops=%d Overheating=%d Detached=%d\n", info.mFuel, info.mScheduledStops, info.mOverheating, info.mDetached);
-		fprintf(fo, "Dents=(%d,%d,%d,%d,%d,%d,%d,%d)\n", info.mDentSeverity[0], info.mDentSeverity[1], info.mDentSeverity[2], info.mDentSeverity[3],
-			info.mDentSeverity[4], info.mDentSeverity[5], info.mDentSeverity[6], info.mDentSeverity[7]);
-		fprintf(fo, "LastImpactET=%.1f Mag=%.1f, Pos=(%.1f,%.1f,%.1f)\n", info.mLastImpactET, info.mLastImpactMagnitude,
-			info.mLastImpactPos.x, info.mLastImpactPos.y, info.mLastImpactPos.z);
+void BridgePlugin::StreamData(char *data_ptr, int length) {
+	int i;
 
-		// Wheels
-		for (long i = 0; i < 4; ++i)
-		{
-			const TelemWheelV01 &wheel = info.mWheel[i];
-			fprintf(fo, "Wheel=%s\n", (i == 0) ? "FrontLeft" : (i == 1) ? "FrontRight" : (i == 2) ? "RearLeft" : "RearRight");
-			fprintf(fo, " SuspensionDeflection=%.3f RideHeight=%.3f\n", wheel.mSuspensionDeflection, wheel.mRideHeight);
-			fprintf(fo, " SuspForce=%.1f BrakeTemp=%.1f BrakePressure=%.3f\n", wheel.mSuspForce, wheel.mBrakeTemp, wheel.mBrakePressure);
-			fprintf(fo, " ForwardRotation=%.1f Camber=%.3f\n", -wheel.mRotation, wheel.mCamber);
-			fprintf(fo, " LateralPatchVel=%.2f LongitudinalPatchVel=%.2f\n", wheel.mLateralPatchVel, wheel.mLongitudinalPatchVel);
-			fprintf(fo, " LateralGroundVel=%.2f LongitudinalGroundVel=%.2f\n", wheel.mLateralGroundVel, wheel.mLongitudinalGroundVel);
-			fprintf(fo, " LateralForce=%.1f LongitudinalForce=%.1f\n", wheel.mLateralForce, wheel.mLongitudinalForce);
-			fprintf(fo, " TireLoad=%.1f GripFract=%.3f TirePressure=%.1f\n", wheel.mTireLoad, wheel.mGripFract, wheel.mPressure);
-			fprintf(fo, " TireTemp(l/c/r)=%.1f/%.1f/%.1f\n", wheel.mTemperature[0], wheel.mTemperature[1], wheel.mTemperature[2]);
-			fprintf(fo, " Wear=%.3f TerrainName=%s SurfaceType=%d\n", wheel.mWear, wheel.mTerrainName, wheel.mSurfaceType);
-			fprintf(fo, " Flat=%d Detached=%d\n", wheel.mFlat, wheel.mDetached);
+	for (i = 0; i < length; i++) {
+		if (data_offset + i == 512) {
+			sendto(s, data, 512, 0, (struct sockaddr *) &sad, sizeof(struct sockaddr));
+			data_packet++;
+			data[0] = data_version;
+			data[1] = data_packet;
+			memcpy(&data[2], &data_sequence, sizeof(short));
+			data_offset = 4;
+			length = length - i;
+			data_ptr += i;
+			i = 0;
 		}
+		data[data_offset + i] = data_ptr[i];
+	}
+	data_offset = data_offset + length;
+}
 
-		// Compute some auxiliary info based on the above
-		TelemVect3 forwardVector = { -info.mOri[0].z, -info.mOri[1].z, -info.mOri[2].z };
-		TelemVect3    leftVector = { info.mOri[0].x,  info.mOri[1].x,  info.mOri[2].x };
+void BridgePlugin::StreamVarString(char *data_ptr) {
+	int i = 0;
+	while (data_ptr[i] != 0) {
+		i++;
+	}
+	StreamData((char *)&i, sizeof(int));
+	StreamString(data_ptr, i);
+}
 
-		// These are normalized vectors, and remember that our world Y coordinate is up.  So you can
-		// determine the current pitch and roll (w.r.t. the world x-z plane) as follows:
-		const double pitch = atan2(forwardVector.y, sqrt((forwardVector.x * forwardVector.x) + (forwardVector.z * forwardVector.z)));
-		const double  roll = atan2(leftVector.y, sqrt((leftVector.x *    leftVector.x) + (leftVector.z *    leftVector.z)));
-		const double radsToDeg = 57.296;
-		fprintf(fo, "Pitch = %.1f deg, Roll = %.1f deg\n", pitch * radsToDeg, roll * radsToDeg);
+void BridgePlugin::StreamString(char *data_ptr, int length) {
+	int i;
 
-		const double metersPerSec = sqrt((info.mLocalVel.x * info.mLocalVel.x) +
-			(info.mLocalVel.y * info.mLocalVel.y) +
-			(info.mLocalVel.z * info.mLocalVel.z));
-		fprintf(fo, "Speed = %.1f KPH, %.1f MPH\n\n", metersPerSec * 3.6f, metersPerSec * 2.237f);
+	for (i = 0; i < length; i++) {
+		if (data_offset + i == 512) {
+			sendto(s, data, 512, 0, (struct sockaddr *) &sad, sizeof(struct sockaddr));
+			data_packet++;
+			data[0] = data_version;
+			data[1] = data_packet;
+			memcpy(&data[2], &data_sequence, sizeof(short));
+			data_offset = 4;
+			length = length - i;
+			data_ptr += i;
+			i = 0;
+		}
+		data[data_offset + i] = data_ptr[i];
+		if (data_ptr[i] == 0) {
+			// found end of string, so this is where we stop
+			data_offset = data_offset + i + 1;
+			return;
+		}
+	}
+	data_offset = data_offset + length;
+}
 
-		// Close file
-		fclose(fo);
+void BridgePlugin::EndStream() {
+	if (data_offset > 4) {
+		sendto(s, data, data_offset, 0, (struct sockaddr *) &sad, sizeof(struct sockaddr));
 	}
 }
 
-
+/*
 void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 {
 	// variables
@@ -249,4 +389,28 @@ void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 
 	// Send the buffer out
 	sendto(senderSocket, buffer, sizeof(buffer), 0, (sockaddr*)&sadSender, sizeof(struct sockaddr));
+}
+*/
+
+void BridgePlugin::Log(const char *msg) {
+	FILE *logFile;
+	time_t curtime;
+	struct tm loctime;
+	char thetime[TIME_LENGTH];
+
+
+	int err = fopen_s(&logFile, "Bridge.rF2.log", "a");
+	if (err == 0) {
+		curtime = time(NULL);
+		int err2 = localtime_s(&loctime, &curtime);
+		int err3 = asctime_s(thetime, TIME_LENGTH, &loctime);
+		thetime[TIME_LENGTH - 2] = 0;
+		fprintf(logFile, "[%s] %s\n", thetime, msg);
+		fclose(logFile);
+	}
+}
+
+void BridgePlugin::Error(const char * const msg)
+{
+	Log(msg);
 }
