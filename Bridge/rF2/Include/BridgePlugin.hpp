@@ -1,4 +1,6 @@
 #include "InternalsPlugin.hpp"
+#include <string>						// std::string
+#include <sstream>						// std::ostringstream
 
 // This is used for the app to use the plugin for its intended purpose
 class BridgePlugin : public InternalsPluginV07
@@ -26,31 +28,19 @@ public:
 	bool WantsScoringUpdates() { return(true); } // CHANGE TO TRUE TO ENABLE SCORING EXAMPLE!
 	void UpdateScoring(const ScoringInfoV01 &info);
 
-	// ERROR FEEDBACK
-	virtual void Error(const char * const msg); // Called with explanation message if there was some sort of error in a plugin callback
-
 private:
 	float mET;  // event time
 	bool mEnabled; // needed for the hardware example
-				   // constant types
+
+	// data variables
 	static const char type_telemetry = 1;
 	static const char type_scoring = 2;
 
-	// marrs:
-	void StartStream();
-	void StreamData(char *data_ptr, int length);
-	void StreamString(char *data_ptr, int length);
-	void StreamVarString(char *data_ptr);
-	void EndStream();
+	void Send(const std::ostringstream &stream);
 	void Log(const char *msg);
 
 	SOCKET s; // socket to send data to
 	struct sockaddr_in sad;
-	char data[512];
-	int data_offset;
-	byte data_version;
-	byte data_packet;
-	short data_sequence;
 	char hostname[256];
 	int port;
 
@@ -59,5 +49,4 @@ private:
 	struct sockaddr_in sadSender;
 	const char *serverHost;
 	u_short serverPort;
-
 };
