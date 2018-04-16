@@ -45,8 +45,7 @@ private:
 	int port;
 
 	// socket variables
-	int senderSocket; // socket to data
-	struct sockaddr_in sadSender;
-	const char *serverHost;
-	u_short serverPort;
+	//int senderSocket; // socket to data
+	//const char *serverHost;
+	//u_short serverPort;
 };

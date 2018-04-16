@@ -5,6 +5,7 @@
 #include <limits>
 #include <string>						// std::string
 #include <sstream>						// std::ostringstream
+#include <iomanip>
 // socket
 #include <ws2tcpip.h>
 // thread
@@ -12,6 +13,19 @@
 #pragma comment(lib, "Ws2_32.lib")
 #include <time.h>
 
+using std::ostringstream;
+using std::string;
+using std::boolalpha;
+using std::noboolalpha;
+using std::dec;
+using std::hex;
+using std::oct;
+using std::endl;
+using std::scientific;
+using std::fixed;
+using std::setprecision;
+using std::setw;
+using std::setfill;
 
 // plugin information
 
@@ -114,30 +128,30 @@ void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 		<< ",\"type\":\"scoring\""
 
 		// General scoring info
-		<< ",\"trackName\":\"%s\"" << info.mTrackName
-		<< ",\"session\":%d" << info.mSession
-		<< ",\"numVehicles\":%d" << info.mNumVehicles
-		<< ",\"currentET\":%.3f" << info.mCurrentET
-		<< ",\"endET\":%.3f" << info.mEndET
-		<< ",\"maxLaps\":%d" << info.mMaxLaps
-		<< ",\"lapDist\":%.1f" << info.mLapDist
+		<< ",\"trackName\":\"" << info.mTrackName << "\""
+		<< ",\"session\":" << info.mSession
+		<< ",\"numVehicles\":" << info.mNumVehicles
+		<< ",\"maxLaps\":" << info.mMaxLaps
+		<< ",\"currentET\":" << info.mCurrentET
+		<< ",\"endET\":" << info.mEndET
+		<< ",\"lapDist\":" << info.mLapDist
 
 		// Session info
-		<< ",\"gamePhase\":%d" << info.mGamePhase
-		<< ",\"yellowFlagState\":%d" << info.mYellowFlagState
-		<< ",\"sectorFlags\":[%d,%d,%d]" << info.mSectorFlag[0] << info.mSectorFlag[1] << info.mSectorFlag[2]
-		<< ",\"inRealTime\":%d" << info.mInRealtime
-		<< ",\"startLight\":%d" << info.mStartLight
-		<< ",\"numRedLights\":%d" << info.mNumRedLights
-		<< ",\"playerName\":\"%s\"" << info.mPlayerName
-		<< ",\"plrFileName\":\"%s\"" << info.mPlrFileName
-		<< ",\"darkCloud\":%.2f" << info.mDarkCloud
-		<< ",\"raining\":%.2f" << info.mRaining
-		<< ",\"ambientTemp\":%.1f" << info.mAmbientTemp
-		<< ",\"trackTemp\":%.1f" << info.mTrackTemp
-		<< ",\"wind\":[%.1f,%.1f,%.1f]" << info.mWind.x << info.mWind.y << info.mWind.z
-		<< ",\"minPathWetness\":%.1f" << info.mMinPathWetness
-		<< ",\"maxPathWetness\":%.1f" << info.mMaxPathWetness
+		//<< ",\"gamePhase\":" << info.mGamePhase
+		//<< ",\"yellowFlagState\":" << info.mYellowFlagState
+		//<< ",\"sectorFlags\":[" << info.mSectorFlag[0] << "," << info.mSectorFlag[1] << "," << info.mSectorFlag[2] << "]"
+		<< ",\"inRealTime\":" << info.mInRealtime
+		//<< ",\"startLight\":" << info.mStartLight
+		//<< ",\"numRedLights\":" << info.mNumRedLights
+		<< ",\"playerName\":\"" << info.mPlayerName << "\""
+		<< ",\"plrFileName\":\"" << info.mPlrFileName << "\""
+		<< ",\"darkCloud\":" << info.mDarkCloud
+		<< ",\"raining\":" << info.mRaining
+		<< ",\"ambientTemp\":" << fixed << info.mAmbientTemp
+		<< ",\"trackTemp\":" << fixed << info.mTrackTemp
+		<< ",\"wind\":[" << info.mWind.x << "," << info.mWind.y << "," << info.mWind.z << "]"
+		<< ",\"minPathWetness\":" << info.mMinPathWetness
+		<< ",\"maxPathWetness\":" << info.mMaxPathWetness
 
 		// Create a vehicle array
 		<< ",\"vehicles\":[";
@@ -147,7 +161,7 @@ void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 	{
 		VehicleScoringInfoV01 &vinfo = info.mVehicle[i];
 
-		const double metersPerSec = sqrt((vinfo.mLocalVel.x * vinfo.mLocalVel.x) +
+		double metersPerSec = sqrt((vinfo.mLocalVel.x * vinfo.mLocalVel.x) +
 			(vinfo.mLocalVel.y * vinfo.mLocalVel.y) +
 			(vinfo.mLocalVel.z * vinfo.mLocalVel.z));
 
@@ -161,43 +175,33 @@ void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 		// Start writing to scoringStream again
 		scoringStream
 
-			<< "\"id\":%d" << vinfo.mID
-			<< ",\"driverName\":\"%s\"" << vinfo.mDriverName
-			<< ",\"vehicleName\":\"%s\"" << vinfo.mVehicleName
-			<< ",\"totalLaps\":%d" << vinfo.mTotalLaps
-			<< ",\"sector\":%d" << vinfo.mSector
-			<< ",\"finishStatus\":%d" << vinfo.mFinishStatus
-			<< ",\"lapDist\":%.1f" << vinfo.mLapDist
-			<< ",\"pathLateral\":%.2f" << vinfo.mPathLateral
-			<< ",\"relevantTrackEdge\":%.2f" << vinfo.mTrackEdge
-			<< ",\"best\":[%.3f << %.3f << %.3f]" << vinfo.mBestSector1 << vinfo.mBestSector2 << vinfo.mBestLapTime
-			<< ",\"last\":[%.3f << %.3f << %.3f]" << vinfo.mLastSector1 << vinfo.mLastSector2 << vinfo.mLastLapTime
-			<< ",\"currentSector1\":%.3f" << vinfo.mCurSector1
-			<< ",\"currentSector2\":%.3f" << vinfo.mCurSector2
-			<< ",\"numPitstops\":%d" << vinfo.mNumPitstops
-			<< ",\"numPenalties\":%d" << vinfo.mNumPenalties
-			<< ",\"isPlayer\":%d" << vinfo.mIsPlayer
-			<< ",\"control\":%d" << vinfo.mControl
-			<< ",\"inPits\":%d" << vinfo.mInPits
-			<< ",\"lapStartET\":%.3f" << vinfo.mLapStartET
-			<< ",\"place\":%d" << vinfo.mPlace
-			<< ",\"vehicleClass\":\"%s\"" << vinfo.mVehicleClass
-			<< ",\"timeBehindNext\":%.3f" << vinfo.mTimeBehindNext
-			<< ",\"lapsBehindNext\":%d" << vinfo.mLapsBehindNext
-			<< ",\"timeBehindLeader\":%.3f" << vinfo.mTimeBehindLeader
-			<< ",\"lapsBehindLeader\":%d" << vinfo.mLapsBehindLeader
-			<< ",\"Pos\":[%.3f,%.3f,%.3f]" << vinfo.mPos.x << vinfo.mPos.y << vinfo.mPos.z
-			<< ",\"metersPerSecond\":" << &metersPerSec
-
-			// Forward is roughly in the -z direction (although current pitch of car may cause some y-direction velocity)
-			<< ",\"localVel\":[%.2f,%.2f,%.2f]" << vinfo.mLocalVel.x << vinfo.mLocalVel.y << vinfo.mLocalVel.z
-			<< ",\"localAccel\":[%.1f,%.1f,%.1f]" << vinfo.mLocalAccel.x << vinfo.mLocalAccel.y << vinfo.mLocalAccel.z
-
-			// Orientation matrix is left-handed
-			<< ",\"orientationMatrix\":[[%6.3f,%6.3f,%6.3f],[%6.3f,%6.3f,%6.3f],[%6.3f,%6.3f,%6.3f]]" << vinfo.mOri[0].x << vinfo.mOri[0].y << vinfo.mOri[0].z << vinfo.mOri[1].x << vinfo.mOri[1].y << vinfo.mOri[1].z << vinfo.mOri[2].x << vinfo.mOri[2].y << vinfo.mOri[2].z
-
-			<< ",\"localRot\":[%.3f,%.3f,%.3f]" << vinfo.mLocalRot.x << vinfo.mLocalRot.y << vinfo.mLocalRot.z
-			<< ",\"localRotAccel\":[%.2f,%.2f,%.2f]" << vinfo.mLocalRotAccel.x << vinfo.mLocalRotAccel.y << vinfo.mLocalRotAccel.z
+			<< "\"id\":" << vinfo.mID
+			<< ",\"driverName\":\"" << vinfo.mDriverName << "\""
+			<< ",\"vehicleName\":\"" << vinfo.mVehicleName << "\""
+			<< ",\"totalLaps\":" << vinfo.mTotalLaps
+			//<< ",\"sector\":" << vinfo.mSector
+			//<< ",\"finishStatus\":" << vinfo.mFinishStatus
+			<< ",\"lapDist\":" << vinfo.mLapDist
+			<< ",\"pathLateral\":" << vinfo.mPathLateral
+			<< ",\"relevantTrackEdge\":" << vinfo.mTrackEdge
+			<< ",\"best\":[" << vinfo.mBestSector1 << "," << vinfo.mBestSector2 << "," << vinfo.mBestLapTime << "]"
+			<< ",\"last\":[" << vinfo.mLastSector1 << "," << vinfo.mLastSector2 << "," << vinfo.mLastLapTime << "]"
+			<< ",\"currentSector1\":" << vinfo.mCurSector1
+			<< ",\"currentSector2\":" << vinfo.mCurSector2
+			<< ",\"numPitstops\":" << vinfo.mNumPitstops
+			<< ",\"numPenalties\":" << vinfo.mNumPenalties
+			<< ",\"isPlayer\":" << vinfo.mIsPlayer
+			//<< ",\"control\":" << vinfo.mControl
+			<< ",\"inPits\":" << vinfo.mInPits
+			<< ",\"lapStartET\":" << vinfo.mLapStartET
+			//<< ",\"place\":" << dec << vinfo.mPlace
+			<< ",\"vehicleClass\":\"" << vinfo.mVehicleClass << "\""
+			<< ",\"timeBehindNext\":" << vinfo.mTimeBehindNext
+			<< ",\"lapsBehindNext\":" << vinfo.mLapsBehindNext
+			<< ",\"timeBehindLeader\":" << vinfo.mTimeBehindLeader
+			<< ",\"lapsBehindLeader\":" << vinfo.mLapsBehindLeader
+			<< ",\"Pos\":[" << vinfo.mPos.x << "," << vinfo.mPos.y << "," << vinfo.mPos.z << "]"
+			<< ",\"metersPerSecond\":" << metersPerSec
 
 			<< "}";
 	}
@@ -205,11 +209,11 @@ void BridgePlugin::UpdateScoring(const ScoringInfoV01 &info)
 	// Start writing to scoringStream again
 	scoringStream
 
-		// Close the vehicle array
-		<< "]"
+	// Close the vehicle array
+	<< "]"
 
-		// Closing json character
-		<< "}";
+	// Closing json character
+	<< "}";
 
 	// Send the buffer
 	Send(scoringStream);
@@ -275,7 +279,7 @@ void BridgePlugin::Send(const std::ostringstream &stream)
 	const char *scoring = const_cast<char*>(completedStream.c_str());
 	// const char * var = str.c_str();
 
-	sendto(senderSocket, scoring, sizeof(completedStream), 0, (sockaddr*)&sadSender, sizeof(struct sockaddr));
+	sendto(s, scoring, strlen(scoring), 0, (sockaddr*)&sad, sizeof(struct sockaddr));
 	// sendto(s, msg, strlen(msg), 0, (struct sockaddr *) &sad, sizeof(struct sockaddr));
 }
 
