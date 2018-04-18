@@ -18,6 +18,8 @@ dotnet publish .\Dashboard\Dashboard.sln -c $configuration -o "$publishUrl\Dashb
 
 if ($selfContained)
 {
+    New-Item -ItemType Directory -Path "$publishUrl_sc\Bridge" -Force -Verbose
+    Copy-Item -Path ".\Bridge\**\bin\**\$configuration\*.dll" -Destination "$publishUrl_sc\Bridge" -Force -Recurse -Verbose
     dotnet publish .\Receiver\Receiver\Receiver.csproj -c $configuration -o "$publishUrl_sc\Receiver" --self-contained -r win10-x64
     dotnet publish .\Dashboard\Dashboard.sln -c $configuration -o "$publishUrl_sc\Dashboard" --self-contained -r win10-x64
 }
