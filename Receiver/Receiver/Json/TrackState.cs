@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Receiver.Json
 {
-    public class Track
+    public class TrackState
     {
         public string application { get; set; }
         public string type { get; set; }
@@ -30,6 +30,6 @@ namespace Receiver.Json
         public float[] wind { get; set; }
         public float minPathWetness { get; set; }
         public float maxPathWetness { get; set; }
-        public Vehicle[] vehicles { get; set; }
+        public VehicleState[] vehicles { get; set; }
     }
 }

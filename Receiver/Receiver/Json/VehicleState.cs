@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Receiver.Json
 {
-    public class Vehicle
+    public class VehicleState
     {
         public int id { get; set; }
         public string driverName { get; set; }
@@ -32,10 +32,6 @@ namespace Receiver.Json
         public float timeBehindLeader { get; set; }
         public int lapsBehindLeader { get; set; }
         public float[] Pos { get; set; }
-        public float[] localVel { get; set; }
-        public float[] localAccel { get; set; }
-        public float[][] orientationMatrix { get; set; }
-        public float[] localRot { get; set; }
-        public float[] localRotAccel { get; set; }
+        public float metersPerSecond { get; set; }
     }
 }

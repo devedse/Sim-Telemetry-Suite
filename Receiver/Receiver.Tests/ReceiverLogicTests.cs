@@ -10,34 +10,44 @@ namespace Receiver.Tests
     public class ReceiverLogicTests
     {
         [Fact]
-        public void HandleNext_StoresNewDriver()
+        public void HandleNext_SavesInitialTrackState()
         {
             // Arrange
-            var trackMapper = new TrackMapper();
+            var mapper = Arrange.GetMapper();
             var driverRepository = Arrange.GetGenericRepository<Driver>();
-            var sut = new ReceiverLogic(trackMapper, driverRepository);
-
-            var driverName = "Unit Test Driver 1";
-            Json.Track track = new Json.Track
-            {
-                vehicles = new Json.Vehicle[]
-                {
-                    new Json.Vehicle
-                    {
-                        driverName = driverName
-                    }
-                }
-            };
+            var sut = new ReceiverLogic(mapper, driverRepository);
+            var jsonTrack = Arrange.GetJsonTrackState();
 
             // Act
-            sut.HandleNext(track);
-            var vehicle = driverRepository.GetAll().FirstOrDefault();
+            //sut.HandleNext(jsonTrack);
+            //var vehicle = driverRepository.GetAll().FirstOrDefault();
 
             // Assert
-            Assert.NotNull(vehicle);
-            Assert.Equal(1, driverRepository.GetAll().Count());
-            Assert.Equal(driverName, vehicle.Name);
+            //Assert.NotNull(vehicle);
+            //Assert.Equal(1, driverRepository.GetAll().Count());
+            //Assert.Equal(jsonTrack.vehicles[0].driverName, vehicle.Name);
+
 
         }
+
+        [Fact]
+        public void HandleNextVehicle_ReturnsVehicleModelState()
+        {
+            // Arrange
+            var mapper = Arrange.GetMapper();
+            var driverRepository = Arrange.GetGenericRepository<Driver>();
+            var sut = new ReceiverLogic(mapper, driverRepository);
+            var vehicleState = Arrange.GetDrivingVehicleInSector3();
+            var nextVehicleState = Arrange.GetJsonTrackState().vehicles[0];
+
+            // Act
+            //sut.HandleNextVehicleState(vehicleState, nextVehicleState);
+
+            // Assert
+            //Assert.NotNull(vehicleState);
+            //Assert.Equal(vehicleState.DriverName, nextVehicleState.driverName);
+
+        }
+
     }
 }

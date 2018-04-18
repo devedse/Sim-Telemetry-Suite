@@ -9,7 +9,7 @@ namespace Receiver.Models
     {
         public string Name { get; set; }
 
-        public int Distance { get; set; }
+        public float Distance { get; set; }
 
         public int Phase { get; set; }
 
@@ -22,8 +22,8 @@ namespace Receiver.Models
         /// <summary>
         /// Path dictionary, containing the lap distance as key and Position as value
         /// </summary>
-        public Dictionary<int, float[]> Path { get; set; } = new Dictionary<int, float[]>();
+        //public Dictionary<int, float[]> Path { get; set; } = new Dictionary<int, float[]>();
 
-        public float PathTime { get; set; }
+        //public float PathTime { get; set; }
     }
 }

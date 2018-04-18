@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+﻿using Autofac;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
 using System.Net;
@@ -9,16 +11,19 @@ namespace Receiver
 {
     public class HubSender : IDisposable
     {
-        private readonly string _hubBaseUrl;
+        private readonly IConfiguration _config;
+        private readonly string _hubUrl;
         private readonly string _hubName;
         private readonly HubConnection _hubConnection;
 
-        public HubSender(string hubBaseUrl, string hubName)
+        public HubSender(IConfiguration configuration)  // string hubBaseUrl, string hubName)
         {
-            _hubBaseUrl = hubBaseUrl;
-            _hubName = hubName;
+            _config = configuration;
+            _hubUrl = _config.GetSection("Hub:Url").Value;
+            _hubName = _config.GetSection("Hub:Name").Value;
+
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{_hubBaseUrl}{_hubName}")
+                .WithUrl($"{_hubUrl}{_hubName}")
                 .WithConsoleLogger()
                 .WithJsonProtocol()
                 .WithTransport(Microsoft.AspNetCore.Sockets.TransportType.WebSockets)
@@ -41,7 +46,7 @@ namespace Receiver
             {
                 try
                 {
-                    HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(_hubBaseUrl);
+                    var request = (HttpWebRequest)WebRequest.Create(_hubUrl);
                     request.AllowAutoRedirect = false; // find out if this site is up and don't follow a redirector
                     request.Method = "HEAD";
 

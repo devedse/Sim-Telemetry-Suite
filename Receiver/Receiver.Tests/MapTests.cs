@@ -1,65 +1,30 @@
-using AutoMapper;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Receiver.Mappings;
-using Model = Receiver.Models;
-using Json = Receiver.Json;
 using Xunit;
-using System;
 
 namespace Receiver.Tests
 {
     public class MapTests
     {
-        public MapTests()
-        {
-            // Initialize maps
-            Mapper.Initialize(cfg =>
-            {
-                // Add profiles for simulations
-                cfg.AddProfile<Rfactor2Profile>();
-            });
-        }
-
-        private Json.Track GetNewTrackInstance()
-        {
-            return new Json.Track
-            {
-                trackName = "track",
-                lapDist = 5000,
-                gamePhase = 0,
-                sectorFlags = new[] { 11, 11, 11 },
-                session = 0,
-                endET = 108000,
-                currentET = 0,
-                vehicles = new[]
-                {
-                    new Json.Vehicle {
-                        id = 0,
-                        driverName = "test",
-                        vehicleName = "auto"
-                    },
-                    new Json.Vehicle
-                    {
-                        id = 100,
-                        driverName = "test2",
-                        vehicleName = "auto2"
-                    }
-                }
-            };
-        }
-
         [Fact]
-        public void MapTrack_ShouldReturnMappedTrackWithoutVehicles()
+        public void MapTrack_ReturnsFullyMappedTrackModel()
         {
-            var track = GetNewTrackInstance();
-            var mappedTrack = Mapper.Map<Models.Track>(track);
+            // Arrange
+            var sut = Arrange.GetMapper();
+            var jsonTrack = Arrange.GetJsonTrackState();
 
-            Assert.NotNull(mappedTrack);
-            Assert.NotNull(mappedTrack.Vehicles);
-            Assert.Empty(mappedTrack.Vehicles);
-            Assert.Equal(track.trackName, mappedTrack.Name);
-            Assert.Equal(track.lapDist, mappedTrack.Distance);
+            // Act
+            var track = sut.Map<Models.Track>(jsonTrack);
+
+            // Assert
+            Assert.NotNull(track);
+            Assert.NotNull(track.Vehicles);
+            Assert.NotEmpty(track.Vehicles);
+            Assert.Equal(2, track.Vehicles.Count);
+            Assert.Equal(jsonTrack.trackName, track.Name);
+            Assert.Equal(jsonTrack.lapDist, track.Distance);
         }
+
+        // Map Test idee
+        // !!!! Track State, we gaan over States praten, en niet zomaar over losse flying objects. maakt geen sense.
+        // .. map the given track json to a track state object
     }
 }
