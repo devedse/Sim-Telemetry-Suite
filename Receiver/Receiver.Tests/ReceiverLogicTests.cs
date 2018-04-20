@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Receiver.Data;
+﻿using Receiver.Data;
 using Receiver.Mappings;
 using System.Linq;
 using System.Threading.Tasks;

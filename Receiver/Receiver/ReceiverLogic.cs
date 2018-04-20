@@ -1,7 +1,7 @@
-﻿using AutoMapper;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Receiver.Data;
+using Receiver.Mappings;
 using System;
 using System.IO;
 using System.Linq;
@@ -50,11 +50,17 @@ namespace Receiver
 
             var trackState = JsonConvert.DeserializeObject<Json.TrackState>(json);
 
-            // First handle the track state
             if (_track == null)
             {
-                _track = _mapper.Map<Models.Track>(trackState);
+                _track = new Models.Track();
             }
+            
+            // Map the new track state. We can always map and override the current object, it won't clean the vehicle collection :)
+            _mapper.MapTrack(_track, trackState);
+            //if (_track == null)
+            //{
+            //    _track = _mapper.Map<Models.Track>(trackState);
+            //}
 
             // Then handle all the vehicle states
             foreach (var vehicle in trackState.vehicles)
@@ -99,7 +105,8 @@ namespace Receiver
             if (vehicle == null)
             {
                 Console.WriteLine($"{jsonVehicle.driverName} joined the server");
-                vehicle = _mapper.Map<Models.Vehicle>(jsonVehicle);
+                vehicle = new Models.Vehicle();
+                _mapper.MapVehicle(vehicle, jsonVehicle);
                 track.Vehicles.Add(vehicle);
             }
             else
@@ -109,14 +116,17 @@ namespace Receiver
                 vehicle.PreviousSector = vehicle.Sector;
                 vehicle.PreviousStatus = vehicle.Status;
                 vehicle.PreviousVelocity = vehicle.Velocity;
-                _mapper.Map(jsonVehicle, vehicle);
+                _mapper.MapVehicle(vehicle, jsonVehicle);
             }
 
             // Get the current lap
             var lapNumber = jsonVehicle.totalLaps + 1;
-            var currentLap =
-                vehicle.Laps.FirstOrDefault(l => l.Number == lapNumber) ??
-                new Models.Lap { Number = lapNumber };
+            if (!vehicle.Laps.Exists(l => l.Number == lapNumber))
+            {
+                Console.WriteLine($"{vehicle.DriverName}: started new lap");
+                vehicle.Laps.Add(new Models.Lap { Number = lapNumber });
+            }
+            var currentLap = vehicle.Laps.FirstOrDefault(l => l.Number == lapNumber);
 
             // Update current lap time and path
             currentLap.Time = jsonVehicle.last;

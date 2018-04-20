@@ -19,8 +19,3 @@ canvas[resize] {
 #sidebar {
     width: 500px;
 }
-
-.colorCaps b {
-    font-weight: bold;
-    color: #FF5800;
-}

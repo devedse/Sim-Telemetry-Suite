@@ -15,6 +15,7 @@ namespace Receiver
         private readonly string _hubUrl;
         private readonly string _hubName;
         private readonly HubConnection _hubConnection;
+        private bool _isConnected;
 
         public HubSender(IConfiguration configuration)  // string hubBaseUrl, string hubName)
         {
@@ -28,6 +29,22 @@ namespace Receiver
                 .WithJsonProtocol()
                 .WithTransport(Microsoft.AspNetCore.Sockets.TransportType.WebSockets)
                 .Build();
+
+            _hubConnection.Closed += _hubConnection_Closed;
+            _hubConnection.Connected += _hubConnection_Connected;
+        }
+
+        private Task _hubConnection_Connected()
+        {
+            _isConnected = true;
+            return null;
+        }
+
+        private Task _hubConnection_Closed(Exception arg)
+        {
+            _isConnected = false;
+            Console.WriteLine(arg.Message);
+            return null;
         }
 
         public async Task Start()
@@ -69,6 +86,11 @@ namespace Receiver
 
         public async Task SendStatus(Models.Track trackInstance)
         {
+            if (!_isConnected)
+            {
+                return;
+            }
+
             var json = JsonConvert.SerializeObject(trackInstance, Formatting.None);
 
             // Send the json string to the clients
@@ -77,6 +99,11 @@ namespace Receiver
 
         public async Task SendTrackPath(Models.Lap lap)
         {
+            if (!_isConnected)
+            {
+                return;
+            }
+
             var json = JsonConvert.SerializeObject(lap, Formatting.None);
 
             // Send the json string to the clients

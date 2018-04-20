@@ -12,7 +12,7 @@ namespace Receiver.Tests
             var jsonTrack = Arrange.GetJsonTrackState();
 
             // Act
-            var track = sut.Map<Models.Track>(jsonTrack);
+            var track = sut.MapTrack(jsonTrack);
 
             // Assert
             Assert.NotNull(track);

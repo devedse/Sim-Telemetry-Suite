@@ -1,9 +1,9 @@
 ﻿using Autofac;
 using Autofac.Configuration;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Receiver.Data;
+using Receiver.Mappings;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -52,26 +52,18 @@ namespace Receiver
             // Custom types
             autofacBuilder.Register(c => config).SingleInstance();
             autofacBuilder.RegisterGeneric(typeof(GenericRepository<>)).As(typeof(IGenericRepository<>));
+            autofacBuilder.RegisterType<IMapper>();
             autofacBuilder.RegisterType<HubSender>().AsSelf().SingleInstance();
             autofacBuilder.RegisterType<ReceiverLogic>();
 
-            // Register all Automapper profiles
+            // Register all mappers
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             autofacBuilder.RegisterAssemblyTypes(assemblies)
-                .Where(t => typeof(Profile).IsAssignableFrom(t) && !t.IsAbstract && t.IsPublic)
-                .As<Profile>();
-
-            // Register configuration as a single instance
-            autofacBuilder.Register(c => new MapperConfiguration(cfg =>
-            {
-                foreach (var profile in c.Resolve<IEnumerable<Profile>>())
-                {
-                    cfg.AddProfile(profile);
-                }
-            })).AsSelf().SingleInstance();
+                .Where(t => typeof(IMapper).IsAssignableFrom(t) && !t.IsAbstract && t.IsPublic)
+                .As<IMapper>();
 
             // Register mapper
-            autofacBuilder.Register(c => c.Resolve<MapperConfiguration>().CreateMapper(c.Resolve)).As<IMapper>().InstancePerLifetimeScope();
+            //autofacBuilder.Register(c => c.Resolve<MapperConfiguration>().CreateMapper(c.Resolve)).As<IMapper>().InstancePerLifetimeScope();
 
             return autofacBuilder.Build();
         }

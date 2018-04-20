@@ -1,10 +1,6 @@
-﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Receiver.Data;
 using Receiver.Mappings;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Receiver.Tests
 {
@@ -24,14 +20,9 @@ namespace Receiver.Tests
             return new GenericRepository<TEntity>(context);
         }
 
-        public static IMapper GetMapper()
+        public static RFactor2Mapper GetMapper()
         {
-            var mapperConfiguration = new MapperConfiguration(config =>
-            {
-                config.AddProfile<Rfactor2Profile>();
-            });
-
-            return mapperConfiguration.CreateMapper();
+            return new RFactor2Mapper();
         }
 
         public static Json.TrackState GetJsonTrackState()
